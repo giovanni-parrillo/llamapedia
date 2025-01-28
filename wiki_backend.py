@@ -21,16 +21,6 @@ from langchain.docstore.document import Document
 logging.basicConfig(level=logging.WARNING, format='%(asctime)s - %(levelname)s - %(message)s')
 
 # -----------------------------
-# Ollama Model Initialization
-# -----------------------------
-ollama.create(
-    model="wikillama1B",
-    from_="llama3.2:1B",
-    parameters={"num_predict": 256, "temperature": 0.1, "repeat_last_n": 3},
-    stream=False
-)
-
-# -----------------------------
 # Custom Ollama LLM
 # -----------------------------
 class LlamaLLM(LLM):
@@ -118,7 +108,10 @@ def get_wikipedia_html_by_url(page_url: str) -> Optional[str]:
     try:
         page_response = requests.get(page_url, timeout=10)
         page_response.raise_for_status()
-        return clean_html(page_response.text)
+        cl = clean_html(page_response.text)
+        with open("output.html", "w", encoding="utf-8") as file:
+            file.write(page_response.text)
+        return cl
     except requests.RequestException as e:
         logging.error(f"Failed to retrieve Wikipedia page: {e}")
         return None
@@ -127,12 +120,23 @@ def get_wikipedia_html_by_url(page_url: str) -> Optional[str]:
 # -----------------------------
 # RAG Setup
 # -----------------------------
-def setup_langchain(text: str) -> RetrievalQA:
+def setup_langchain(text: str, chunk_size: int, chunk_overlap: int, num_predict: int) -> RetrievalQA:
     """
     Create a Retrieval-Augmented Generation pipeline using LangChain,
     returning a RetrievalQA chain object.
     """
-    text_splitter = RecursiveCharacterTextSplitter(chunk_size=600, chunk_overlap=50)
+
+    # -----------------------------
+    # Ollama Model Initialization
+    # -----------------------------
+    ollama.create(
+        model="wikillama1B",
+        from_="llama3.2:1B",
+        parameters={"num_predict": num_predict, "temperature": 0.1, "repeat_last_n": 2},
+        stream=False
+    )
+
+    text_splitter = RecursiveCharacterTextSplitter(chunk_size=chunk_size, chunk_overlap=chunk_overlap)
     chunks = text_splitter.split_text(text)
 
     docs = []
