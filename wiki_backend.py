@@ -18,13 +18,35 @@ from langchain.docstore.document import Document
 # -----------------------------
 # Configure Logging
 # -----------------------------
-logging.basicConfig(level=logging.WARNING, format='%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(format='%(asctime)s - %(levelname)s - %(message)s')
+
+# -----------------------------
+# Get available Ollama models
+# -----------------------------
+
+def get_ollama_models() -> List[str]:
+    """
+    Get a list of available Ollama models.
+
+    Returns:
+        List[str]: A list of available Ollama models.
+    """
+    try:
+        command = ['ollama', 'list']
+        result = subprocess.run(
+            command, capture_output=True, text=True, check=True, encoding='utf-8'
+        )
+        return [name.split(" ")[0] for name in result.stdout.strip().split("\n")]
+    except subprocess.CalledProcessError as e:
+        logging.error(f"Ollama failed: {e.stderr}")
+        return []
+
 
 # -----------------------------
 # Custom Ollama LLM
 # -----------------------------
 class LlamaLLM(LLM):
-    model_name: str = Field(default="wikillama1B")
+    model_name: str = Field(default="wikillama")
 
     def _call(self, prompt: str, stop: Optional[List[str]] = None) -> str:
         try:
@@ -120,7 +142,11 @@ def get_wikipedia_html_by_url(page_url: str) -> Optional[str]:
 # -----------------------------
 # RAG Setup
 # -----------------------------
-def setup_langchain(text: str, chunk_size: int, chunk_overlap: int, num_predict: int) -> RetrievalQA:
+def setup_langchain(text: str,
+                    chunk_size: int,
+                    chunk_overlap: int,
+                    num_predict: int,
+                    base_llm_name:str) -> RetrievalQA:
     """
     Create a Retrieval-Augmented Generation pipeline using LangChain,
     returning a RetrievalQA chain object.
@@ -129,9 +155,10 @@ def setup_langchain(text: str, chunk_size: int, chunk_overlap: int, num_predict:
     # -----------------------------
     # Ollama Model Initialization
     # -----------------------------
+    
     ollama.create(
-        model="wikillama1B",
-        from_="llama3.2:1B",
+        model="wikillama",
+        from_=base_llm_name,
         parameters={"num_predict": num_predict, "temperature": 0.1, "repeat_last_n": 2},
         stream=False
     )

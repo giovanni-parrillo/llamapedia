@@ -71,6 +71,14 @@ class WikipediaRAGApp:
         self.performance_dropdown["values"] = ("fast", "balanced", "accurate")
         self.performance_dropdown.pack(padx=(0, 0), pady=(0, 10))
 
+        ttk.Label(self.top_frame, text="LLM Model:").pack(anchor="w")
+        self.llm_model_var = tk.StringVar(value="default")
+        self.llm_model_dropdown = ttk.Combobox(
+            self.top_frame, textvariable=self.llm_model_var, state="readonly", width=20
+        )
+        self.llm_model_dropdown["values"] = wiki_backend.get_ollama_models()
+        self.llm_model_dropdown.pack(padx=(0, 0), pady=(0, 10))
+
         ttk.Label(self.top_frame, text="Enter your query:").pack(anchor="w")
         self.query_var = tk.StringVar()
         self.query_entry = ttk.Entry(self.top_frame, textvariable=self.query_var, width=40)
@@ -200,6 +208,7 @@ class WikipediaRAGApp:
 
         # Build QA chain
         self.chain = wiki_backend.setup_langchain(
+            base_llm_name=self.llm_model_var.get(),
             text=html_content,
             chunk_size=chunk_size,
             chunk_overlap=chunk_overlap,
